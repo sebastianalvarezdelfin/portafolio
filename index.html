@@ -22,6 +22,7 @@
   --bg:#0f0f10; --bg2:#18181a; --line:#27272a; --fg:#ece8e1; --muted:#8f8b84; --soft:#c9c4bb;
   --font:Inter,system-ui,-apple-system,'Segoe UI',sans-serif;
   --name:'Big Shoulders Display',Impact,'Arial Narrow',sans-serif;
+  --ease-out:cubic-bezier(.23,1,.32,1);
   --gut:clamp(16px,4vw,48px); --max:1440px; --gap:clamp(10px,1.2vw,16px);
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -29,25 +30,27 @@ body{background:var(--bg);color:var(--fg);font:15px/1.6 var(--font);-webkit-font
 a{color:inherit;text-decoration:none}
 img{display:block;max-width:100%}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+a,button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .wrap{width:100%;max-width:var(--max);margin:0 auto;padding:0 var(--gut)}
 
 /* header */
-header{position:sticky;top:0;z-index:20;background:rgba(15,15,16,.92);backdrop-filter:blur(10px);border-bottom:1px solid transparent;transition:background .3s,border-color .3s}
+header{position:sticky;top:0;z-index:20;background:rgba(15,15,16,.92);backdrop-filter:blur(10px);border-bottom:1px solid transparent;transition:background-color 200ms ease,border-color 200ms ease}
 header.scrolled{border-color:var(--line)}
 header .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:68px}
-.brand{display:grid;gap:1px;transition:opacity .3s}
+.brand{display:grid;gap:1px;transition:opacity 200ms ease}
 .brand b{font:800 clamp(20px,2vw,26px)/1 var(--name);text-transform:uppercase;letter-spacing:.03em}
 .brand span{font-size:12.5px;color:var(--muted)}
 nav{display:flex;flex-wrap:wrap;gap:8px clamp(18px,2.6vw,34px)}
-nav a{font:700 12.5px/1 var(--font);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);padding:7px 0;border-bottom:2px solid transparent;transition:color .2s,border-color .2s}
-nav a:hover{color:var(--fg)}
+nav a{font:700 12.5px/1 var(--font);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);padding:7px 0;border-bottom:2px solid transparent;transition:color 150ms ease,border-color 150ms ease}
 nav a.on{color:var(--fg);border-color:var(--fg)}
 /* on the home page the small name in the header appears once the big one scrolls away */
 body.home header:not(.scrolled) .brand{opacity:0;pointer-events:none}
 
 main{flex:1;padding-bottom:88px}
-.view{animation:fade .35s ease both}
+.view{animation:fade 220ms var(--ease-out) both}
 @keyframes fade{from{opacity:0}to{opacity:1}}
+.bento .card{animation:rise 520ms var(--ease-out) both;animation-delay:calc(var(--i,0) * 60ms)}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 
 /* hero */
 .hero{padding:clamp(36px,7vw,96px) 0 clamp(4px,1vw,12px)}
@@ -66,8 +69,11 @@ main{flex:1;padding-bottom:88px}
 .bento .card.big .img{aspect-ratio:21/9}
 .card{display:block}
 .card .img{overflow:hidden;background:var(--bg2);aspect-ratio:16/9;border-radius:3px}
-.card img{width:100%;height:100%;object-fit:cover;transition:transform .7s cubic-bezier(.2,.7,.2,1)}
-.card:hover img,.card:focus-visible img{transform:scale(1.03)}
+.card .img{transition:transform 160ms ease-out}
+.card:active .img{transform:scale(.985)}
+.card img{width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 300ms ease-out,transform 500ms var(--ease-out)}
+.card img.ld{opacity:1}
+.card:focus-visible img{transform:scale(1.02)}
 .card:focus-visible{outline:none}
 .card:focus-visible .img{outline:2px solid var(--fg);outline-offset:3px}
 .card .cap{display:grid;gap:2px;margin-top:12px}
@@ -79,7 +85,7 @@ main{flex:1;padding-bottom:88px}
 .p-top h1{font-size:clamp(26px,3.4vw,40px);font-weight:600;letter-spacing:-.015em;line-height:1.1}
 .p-top .sub{color:var(--muted);font-size:14px;margin-top:6px}
 .back{font-size:13px;color:var(--muted)}
-.back:hover{color:var(--fg)}
+.back{transition:color 150ms ease}
 .p-info{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:clamp(20px,4vw,64px);padding:clamp(20px,2.6vw,30px) 0;margin:clamp(20px,2.6vw,32px) 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .p-info p{color:var(--soft);max-width:64ch}
 .p-info p + p{margin-top:10px}
@@ -90,15 +96,16 @@ dt{color:var(--muted)}
 .label{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:clamp(28px,4vw,44px) 0 14px}
 .shot{margin:0}
 .shot .fr{background:var(--bg2);cursor:zoom-in;border-radius:3px;overflow:hidden}
-.shot img{width:100%;height:auto;opacity:0;transition:opacity .5s}
+.shot .fr{transition:transform 160ms ease-out}
+.shot:active .fr{transform:scale(.99)}
+.shot img{width:100%;height:auto;opacity:0;transition:opacity 300ms ease-out}
 .shot img.ld{opacity:1}
 .shot figcaption{font-size:13px;color:var(--muted);margin-top:8px}
 .pager{display:flex;justify-content:space-between;gap:16px;margin-top:clamp(40px,5vw,64px);padding-top:22px;border-top:1px solid var(--line)}
 .pager a{display:grid;gap:4px;max-width:48%}
 .pager a:last-child{text-align:right;margin-left:auto}
 .pager small{font-size:12px;color:var(--muted)}
-.pager span{font-size:clamp(16px,1.8vw,20px);font-weight:600;transition:color .2s}
-.pager a:hover span{color:var(--muted)}
+.pager span{font-size:clamp(16px,1.8vw,20px);font-weight:600;transition:color 150ms ease}
 
 /* about */
 .about{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);grid-template-areas:"head photo" "bio photo" "skills photo" "contact photo";column-gap:clamp(28px,6vw,96px);align-items:start;padding-top:clamp(28px,4vw,56px)}
@@ -109,22 +116,23 @@ dt{color:var(--muted)}
 .a-bio p{color:var(--soft);max-width:60ch}
 .a-bio p + p{margin-top:12px}
 .skills,.contact{margin-top:32px;padding-top:24px;border-top:1px solid var(--line)}
-.contact a{border-bottom:1px solid var(--line);transition:border-color .2s}
-.contact a:hover{border-color:var(--fg)}
+.contact a{border-bottom:1px solid var(--line);transition:border-color 150ms ease}
 
 footer .wrap{padding-top:22px;padding-bottom:22px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;color:var(--muted);font-size:13px}
 footer .soc{display:flex;flex-wrap:wrap;gap:18px}
-footer a:hover{color:var(--fg)}
+footer a{transition:color 150ms ease}
 
 /* lightbox */
-.lb{position:fixed;inset:0;z-index:50;background:rgba(8,8,9,.97);display:none;align-items:center;justify-content:center}
-.lb.open{display:flex}
-.lb img{max-width:calc(100vw - 32px);max-height:calc(100vh - 110px);object-fit:contain}
-.lb button{position:absolute;width:48px;height:48px;display:grid;place-items:center;font-size:24px;color:var(--muted);transition:color .2s}
-.lb button:hover{color:var(--fg)}
+.lb{position:fixed;inset:0;z-index:50;background:rgba(8,8,9,.97);display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 160ms ease-out,visibility 0s linear 160ms}
+.lb.open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity 240ms var(--ease-out),visibility 0s}
+.lb img{max-width:calc(100vw - 32px);max-height:calc(100vh - 110px);object-fit:contain;transform:scale(.97);transition:transform 160ms ease-out}
+.lb.open img{transform:none;transition:transform 320ms var(--ease-out)}
+.lb button{position:absolute;width:48px;height:48px;display:grid;place-items:center;font-size:24px;color:var(--muted);transition:color 150ms ease,transform 160ms ease-out}
+.lb .x:active{transform:scale(.9)}
 .lb .x{top:10px;right:12px}
 .lb .pv{left:8px;top:50%;transform:translateY(-50%)}
 .lb .nx{right:8px;top:50%;transform:translateY(-50%)}
+.lb .pv:active,.lb .nx:active{transform:translateY(-50%) scale(.9)}
 .lb .ct{position:absolute;bottom:20px;left:56px;right:56px;text-align:center;font-size:13px;color:var(--muted)}
 
 @media (max-width:760px){
@@ -136,13 +144,22 @@ footer a:hover{color:var(--fg)}
   .about{grid-template-columns:1fr;grid-template-areas:"head" "photo" "bio" "skills" "contact"}
   .about .portrait{justify-self:start;max-width:240px;margin-bottom:24px}
   .lb .pv,.lb .nx{top:auto;bottom:6px;transform:none}
+  .lb .pv:active,.lb .nx:active{transform:scale(.9)}
 }
 @media (max-width:440px){
   dl{grid-template-columns:1fr;gap:2px}
   dd{margin-bottom:10px}
 }
-@media (hover:none){.card:hover img{transform:none}}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (hover:hover) and (pointer:fine){
+  nav a:hover,.back:hover,footer a:hover,.lb button:hover{color:var(--fg)}
+  .pager a:hover span{color:var(--muted)}
+  .contact a:hover{border-color:var(--fg)}
+  .card:hover img{transform:scale(1.02)}
+}
+@media (prefers-reduced-motion:reduce){
+  .bento .card{animation-name:fade}
+  .card img,.lb img,.lb.open img,.card .img,.shot .fr{transform:none!important}
+}
 </style>
 </head>
 <body>
@@ -258,8 +275,8 @@ const allShots = p => {
   return out;
 };
 
-const card = p => { const c = p.cover.replace(/^img\/|\.jpg$/g, ''); return `<a class="card${p.big ? ' big' : ''}" href="#/${p.slug}">
-    <div class="img"><img src="img/${c}-sm.jpg" srcset="${srcset(c, 1024, 2560)}" sizes="${p.big ? '(max-width:1440px) 100vw, 1344px' : '(max-width:760px) 100vw, (max-width:1440px) 50vw, 672px'}" alt="${esc(p.title)}" loading="lazy" decoding="async"></div>
+const card = (p, i = 0) => { const c = p.cover.replace(/^img\/|\.jpg$/g, ''); return `<a class="card${p.big ? ' big' : ''}" style="--i:${Math.min(i, 8)}" href="#/${p.slug}">
+    <div class="img"><img src="img/${c}-sm.jpg" srcset="${srcset(c, 1024, 2560)}" sizes="${p.big ? '(max-width:1440px) 100vw, 1344px' : '(max-width:760px) 100vw, (max-width:1440px) 50vw, 672px'}" alt="${esc(p.title)}" loading="lazy" decoding="async" onload="this.classList.add('ld')"></div>
     <div class="cap"><h3>${esc(p.title)}</h3><span class="meta">${p.year}</span></div></a>`; };
 
 function viewHome(){
@@ -344,7 +361,18 @@ addEventListener('keydown', e => {
 });
 let tx = null;
 lb.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
-lb.addEventListener('touchend', e => { if (tx === null) return; const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 50) show(li + (dx < 0 ? 1 : -1)); tx = null; });
+// a quick flick counts as much as a long drag; the new image slides in from the side you swiped toward
+const calm = matchMedia('(prefers-reduced-motion: reduce)');
+let t0 = 0;
+lb.addEventListener('touchstart', () => { t0 = performance.now(); }, { passive: true });
+lb.addEventListener('touchend', e => {
+  if (tx === null || e.touches.length) return;
+  const dx = e.changedTouches[0].clientX - tx, v = Math.abs(dx) / Math.max(1, performance.now() - t0);
+  tx = null;
+  if (Math.abs(dx) < 50 && !(Math.abs(dx) > 16 && v > 0.11)) return;
+  show(li + (dx < 0 ? 1 : -1));
+  if (!calm.matches) lbImg.animate([{ transform: `translateX(${dx < 0 ? 32 : -32}px)`, opacity: 0.5 }, { transform: 'none', opacity: 1 }], { duration: 240, easing: 'cubic-bezier(.23,1,.32,1)' });
+});
 
 // router. Old links (#/environment, #/keyframes, #/personajes, #/sobre-mi) keep working.
 const ALIAS = { personajes:'characters', 'sobre-mi':'about', environment:'', keyframes:'' };
