@@ -49,7 +49,7 @@ body.home header:not(.scrolled) .brand{opacity:0;pointer-events:none}
 main{flex:1;padding-bottom:88px}
 .view{animation:fade 220ms var(--ease-out) both}
 @keyframes fade{from{opacity:0}to{opacity:1}}
-.bento .card{animation:rise 520ms var(--ease-out) both;animation-delay:calc(var(--i,0) * 60ms)}
+.bento .card{animation:rise 520ms var(--ease-out) both;animation-delay:calc(min(var(--i,0), 8) * 60ms)}
 @keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 
 /* hero */
@@ -68,8 +68,7 @@ main{flex:1;padding-bottom:88px}
 .bento .card.big{grid-column:1/-1}
 .bento .card.big .img{aspect-ratio:21/9}
 .card{display:block}
-.card .img{overflow:hidden;background:var(--bg2);aspect-ratio:16/9;border-radius:3px}
-.card .img{transition:transform 160ms ease-out}
+.card .img{overflow:hidden;background:var(--bg2);aspect-ratio:16/9;border-radius:3px;transition:transform 160ms ease-out}
 .card:active .img{transform:scale(.985)}
 .card img{width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 300ms ease-out,transform 500ms var(--ease-out)}
 .card img.ld{opacity:1}
@@ -84,8 +83,7 @@ main{flex:1;padding-bottom:88px}
 .p-top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:10px 24px;padding:clamp(22px,3vw,36px) 0 clamp(16px,2vw,22px)}
 .p-top h1{font-size:clamp(26px,3.4vw,40px);font-weight:600;letter-spacing:-.015em;line-height:1.1}
 .p-top .sub{color:var(--muted);font-size:14px;margin-top:6px}
-.back{font-size:13px;color:var(--muted)}
-.back{transition:color 150ms ease}
+.back{font-size:13px;color:var(--muted);transition:color 150ms ease}
 .p-info{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:clamp(20px,4vw,64px);padding:clamp(20px,2.6vw,30px) 0;margin:clamp(20px,2.6vw,32px) 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .p-info p{color:var(--soft);max-width:64ch}
 .p-info p + p{margin-top:10px}
@@ -95,9 +93,9 @@ dt{color:var(--muted)}
 .pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--gap)}
 .label{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:clamp(28px,4vw,44px) 0 14px}
 .shot{margin:0}
-.shot .fr{background:var(--bg2);cursor:zoom-in;border-radius:3px;overflow:hidden}
-.shot .fr{transition:transform 160ms ease-out}
-.shot:active .fr{transform:scale(.99)}
+.shot .fr{display:block;width:100%;padding:0;background:var(--bg2);cursor:zoom-in;border-radius:3px;overflow:hidden;transition:transform 160ms ease-out}
+.shot .fr:active{transform:scale(.99)}
+.shot .fr:focus-visible{outline:2px solid var(--fg);outline-offset:3px}
 .shot img{width:100%;height:auto;opacity:0;transition:opacity 300ms ease-out}
 .shot img.ld{opacity:1}
 .shot figcaption{font-size:13px;color:var(--muted);margin-top:8px}
@@ -128,6 +126,9 @@ footer a{transition:color 150ms ease}
 .lb img{max-width:calc(100vw - 32px);max-height:calc(100vh - 110px);object-fit:contain;transform:scale(.97);transition:transform 160ms ease-out}
 .lb.open img{transform:none;transition:transform 320ms var(--ease-out)}
 .lb button{position:absolute;width:48px;height:48px;display:grid;place-items:center;font-size:24px;color:var(--muted);transition:color 150ms ease,transform 160ms ease-out}
+.lb img.loading{visibility:hidden}
+.lb button[hidden]{display:none}
+.lb button:focus-visible{outline:2px solid var(--fg);outline-offset:-6px}
 .lb .x:active{transform:scale(.9)}
 .lb .x{top:10px;right:12px}
 .lb .pv{left:8px;top:50%;transform:translateY(-50%)}
@@ -158,7 +159,7 @@ footer a{transition:color 150ms ease}
 }
 @media (prefers-reduced-motion:reduce){
   .bento .card{animation-name:fade}
-  .card img,.lb img,.lb.open img,.card .img,.shot .fr{transform:none!important}
+  .card img,.lb img,.card .img,.shot .fr{transform:none!important}
 }
 </style>
 </head>
@@ -193,135 +194,152 @@ footer a{transition:color 150ms ease}
   <button class="x" id="lbX" aria-label="Cerrar">✕</button>
   <button class="pv" id="lbP" aria-label="Anterior">←</button>
   <button class="nx" id="lbN" aria-label="Siguiente">→</button>
-  <div class="ct" id="lbC"></div>
+  <div class="ct" id="lbC" aria-live="polite"></div>
 </div>
 
 <script>
-// Secciones, en orden. page: en qué página del menú aparecen (Projects o Characters).
-// El primer proyecto de cada sección sale grande.
-const SECTIONS = [
-  { id:'environment', title:'Environment Design', page:'projects' },
-  { id:'keyframes',   title:'Keyframes',          page:'projects' },
-  { id:'characters',  title:'Characters',         page:'characters' }
-];
-// Para agregar un personaje nuevo: copia la entrada de Sangre y Obsidiana con section:'characters'.
-
-// Orden = orden en la galería. big:true = sale a todo lo ancho (entre dos grandes deja un número par de chicas).
-// finals: piezas terminadas (van primero, a todo lo ancho)
-// compare: [imagen, texto] que va lado a lado con el primer final (antes/después)
-// process: [imagen, texto] láminas de proceso, en cuadrícula de 2
+// ── Cómo agregar un proyecto o un personaje ────────────────────────────────────────────
+// Copia una entrada de PROJECTS y cambia sus datos. El orden de la lista = el orden en la galería.
+// Cada imagen necesita dos archivos en img/: nombre.jpg (grande) y nombre-sm.jpg (ligera, para celular).
+//   slug    obligatorio  id de la URL, sin espacios ni acentos: 'mi-proyecto' → #/mi-proyecto
+//   title   obligatorio  nombre visible
+//   year    obligatorio
+//   tag     obligatorio  disciplina; sale en la ficha como "Disciplina"
+//   cover   obligatorio  portada de la galería, sin "img/" ni ".jpg": 'cover-aldea'
+//   finals  obligatorio  piezas terminadas: ['aldea-1'] o con texto: [['caperucita-2','2024']]
+//   pair    opcional     true = las finals van lado a lado (antes/después) en vez de una debajo de otra
+//   process opcional     láminas de proceso, en cuadrícula de 2: [['aldea-3','Thumbnails'], …]
+//   desc    opcional     párrafos de la descripción
+//   meta    opcional     filas de la ficha: [['Rol','…'], …]
+//   big     opcional     true = tarjeta a todo lo ancho (entre dos grandes deja un número par de chicas)
+//   page    opcional     'characters' = va en la página Characters; si no se pone, va en Projects
 const PROJECTS = [
-  { big:true, slug:'aldea-japonesa', section:'environment', title:'Aldea Japonesa', year:2024, tag:'Environment Design', cover:'img/cover-aldea.jpg',
+  { big:true, slug:'aldea-japonesa', title:'Aldea Japonesa', year:2024, tag:'Environment Design', cover:'cover-aldea',
     finals:['aldea-1'],
     process:[['aldea-2','Pasadas de color, valor y render'],['aldea-3','Thumbnails'],['aldea-4','Moodboard: formas, color e iluminación']],
     desc:['Entorno de época de arquitectura tradicional japonesa. Linternas y vigas en primer plano enmarcan la vista a través del poblado hasta el Monte Fuji.'],
     meta:[['Enfoque','Composición por capas, arquitectura, matte painting'],['Pipeline','Thumbnails → Blender (blockout, iluminación) → Photoshop']] },
 
-  { slug:'camino-a-senguio', section:'environment', title:'Camino a Senguio', year:2025, tag:'Environment Design', cover:'img/cover-camino.jpg',
+  { slug:'camino-a-senguio', title:'Camino a Senguio', year:2025, tag:'Environment Design', cover:'cover-camino',
     finals:['camino-1'],
     process:[['camino-2','Sketch de layout']],
     desc:['Entorno de un pueblo rural mexicano para el proyecto Camino a Senguio. Atención al deterioro de materiales, la vegetación nativa y los props urbanos.'],
     meta:[['Estudio','EAS Studio'],['Rol','Layout 3D, environment design, texturizado y paintover'],['Pipeline','Blender (layout, iluminación base) → Photoshop']] },
 
-  { slug:'puerta-del-infierno', section:'environment', title:'Puerta del Infierno', year:2024, tag:'Environment Design', cover:'img/cover-puerta.jpg',
+  { slug:'puerta-del-infierno', title:'Puerta del Infierno', year:2024, tag:'Environment Design', cover:'cover-puerta',
     finals:['puerta-1'],
     process:[['puerta-2','Moodboard: formas, iluminación y texturas'],['puerta-3','Sketches de cámara']],
     desc:['Umbral monumental de inspiración mesoamericana. La simetría de las estatuas guardianas y la luz sobre las escalinatas guían la mirada hacia la entrada.'],
     meta:[['Enfoque','Escala monumental, iluminación atmosférica, piedra'],['Pipeline','Blender (blockout, layout) → Photoshop (photobash, paintover)']] },
 
-  { big:true, slug:'agente-secreto', section:'keyframes', title:'Agente Secreto', year:2025, tag:'Keyframes', cover:'img/cover-agente.jpg',
+  { big:true, slug:'agente-secreto', title:'Agente Secreto', year:2025, tag:'Keyframes', cover:'cover-agente',
     finals:['agente-1','agente-2'],
     process:[['agente-3','Thumbnails · SEQ0400'],['agente-4','Thumbnails · SEQ0300']],
     desc:['Dos keyframes de secuencia (SEQ0300 y SEQ0400) con su exploración de thumbnails.'],
     meta:[['Entregables','2 keyframes y thumbnails'],['Título provisional','Espía Secreto (así aparece en las láminas)']] },
 
-  { slug:'midnight-incorporated', section:'keyframes', title:'Midnight Incorporated', year:2025, tag:'Keyframes · Environment Design', cover:'img/cover-midnight.jpg',
+  { slug:'midnight-incorporated', title:'Midnight Incorporated', year:2025, tag:'Keyframes · Environment Design', cover:'cover-midnight',
     finals:['midnight-1','midnight-2','midnight-3','midnight-4','midnight-5'],
     desc:['Serie de cinco keyframes para el cortometraje/IP Midnight Incorporated, a partir del guion y la visión del director. El reto fue mantener la consistencia de estilo e iluminación entre escenas, siguiendo un style guide establecido.'],
     meta:[['Rol','Keyframe & Environment Concept Artist'],['Dirección de arte','Luis F. Perez'],['Entregables','5 keyframes y layouts de exploración'],['Pipeline','Blender (blockout, iluminación) → Photoshop']] },
 
-  { slug:'caperucita-roja', section:'keyframes', title:'Caperucita Roja', year:2026, tag:'Keyframe (rework)', cover:'img/cover-caperucita.jpg',
-    finals:['caperucita-1'],
-    compare:[['caperucita-1','2026'],['caperucita-2','2024 (original)']],
+  { slug:'caperucita-roja', title:'Caperucita Roja', year:2026, tag:'Keyframe (rework)', cover:'cover-caperucita',
+    finals:[['caperucita-1','2026'],['caperucita-2','2024 (original)']], pair:true,
     process:[['caperucita-3','Boceto y exploración de color'],['caperucita-4','Exploración de key shot, moodboard y boceto']],
     desc:['Keyframe narrativo del momento previo a adentrarse en el bosque. La calidez del personaje contrasta con el tono misterioso del entorno para dirigir el punto focal.',
           'Rework de mi pieza de 2024: mejor jerarquía visual, temperatura de color y pintado del personaje.'],
     meta:[['Proceso','Thumbnails → exploración de color → pintura digital']] },
 
-  { big:true, slug:'sangre-y-obsidiana', section:'characters', title:'Sangre y Obsidiana', year:2026, tag:'Character Design', cover:'img/cover-sangre.jpg',
+  { big:true, page:'characters', slug:'sangre-y-obsidiana', title:'Sangre y Obsidiana', year:2026, tag:'Character Design', cover:'cover-sangre',
     finals:['sangre-1'],
     desc:['Serie animada de fantasía oscura mesoamericana: un guerrero superviviente y una bestia primordial se unen para cazar al dios de la guerra que destruyó su clan.',
           'Lenguaje de formas directo, siluetas marcadas y proporciones agresivas. El lineup define la escala entre el dios colosal, el cazador y el jaguar emplumado.'],
     meta:[['Tipo','IP original · pitch de desarrollo visual'],['Rol','Creación de IP, diseño de personajes, worldbuilding'],['Público','Young adult / adulto (15–40)'],['Referencias','Primal, Samurai Jack, mitología mesoamericana'],['Herramientas','Photoshop, Procreate']] }
 ];
-const ORDER = PROJECTS;
-const pageOf = p => SECTIONS.find(s => s.id === p.section).page;
 
-const src = s => `img/${s}.jpg`;
-// small file for phones, full-resolution file for big and Retina screens
-const srcset = (s, smW, fullW) => `img/${s}-sm.jpg ${smW}w, img/${s}.jpg ${fullW}w`;
+// The two menu pages that list projects
+const PAGES = { projects: { hash: '', label: 'Projects' }, characters: { hash: 'characters', label: 'Characters' } };
+const pageOf = p => p.page || 'projects';
+
+// Catch typos when a project is added: the console says what's wrong instead of the site breaking
+PROJECTS.forEach((p, i) => {
+  const missing = ['slug', 'title', 'year', 'tag', 'cover', 'finals'].filter(k => !p[k]);
+  if (missing.length) console.warn(`PROJECTS[${i}] (${p.title || p.slug || '?'}): falta ${missing.join(', ')}`);
+  if (!PAGES[pageOf(p)]) console.warn(`PROJECTS[${i}] (${p.title}): page "${p.page}" no existe; usa 'characters' o quítalo`);
+  if (PROJECTS.findIndex(x => x.slug === p.slug) !== i) console.warn(`PROJECTS[${i}]: slug repetido "${p.slug}"`);
+});
+
+const SITE = 'Sebastián Álvarez Delfín';
+const ROLE = 'Ilustrador y Concept Artist';
+const ROLE_LINE = `${ROLE} · Ciudad de México`;
+// foot: label in the footer (left out = not in the footer)
+const LINKS = [
+  { label: 'Email', href: 'mailto:salvarezdelfin@gmail.com', text: 'salvarezdelfin@gmail.com', foot: 'salvarezdelfin@gmail.com' },
+  { label: 'WhatsApp', href: 'https://wa.me/525579806805', text: '+52 55 7980 6805' },
+  { label: 'ArtStation', href: 'https://www.artstation.com/ssebasalvarez', text: 'ssebasalvarez', foot: 'ArtStation' },
+  { label: 'Instagram', href: 'https://www.instagram.com/ssebartt', text: '@ssebartt', foot: 'Instagram' },
+  { label: 'LinkedIn', href: 'https://www.linkedin.com/in/juan-sebastián-álvarez-delfín-8326b8209', text: 'Juan Sebastián Álvarez Delfín', foot: 'LinkedIn' }
+];
+const link = (l, text) => `<a href="${l.href}"${l.href.startsWith('mailto:') ? '' : ' target="_blank" rel="noopener"'}>${text}</a>`;
+
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const app = document.getElementById('app');
-const SITE = 'Sebastián Álvarez Delfín';
 
+// One <img> for every gallery/project picture: the light file on phones, the full one on big and Retina screens.
+// The widths in SIZES follow the layout: 760px = mobile breakpoint, 1344px = max content width (1440 − 2×48 gutter).
+const SIZES = { full: '(max-width:1440px) 100vw, 1344px', half: '(max-width:760px) 100vw, (max-width:1440px) 50vw, 672px' };
+const srcset = (name, smW, fullW) => `img/${name}-sm.jpg ${smW}w, img/${name}.jpg ${fullW}w`;
+const pic = (name, { alt, half, eager, cover }) =>
+  `<img src="img/${name}-sm.jpg" srcset="${cover ? srcset(name, 1024, 2560) : srcset(name, 1600, 3840)}" sizes="${half ? SIZES.half : SIZES.full}" alt="${esc(alt)}" loading="${eager ? 'eager' : 'lazy'}" decoding="async">`;
+// images fade in once loaded (load doesn't bubble, so listen in the capture phase)
+app.addEventListener('load', e => { if (e.target.tagName === 'IMG') e.target.classList.add('ld'); }, true);
+
+// an image entry is 'name' or ['name', 'caption']
+const asShot = x => Array.isArray(x) ? x : [x, ''];
 // every image of a project in display order, for the lightbox
-const allShots = p => {
-  const seen = new Set(), out = [];
-  const add = (s, cap) => { if (!seen.has(s)) { seen.add(s); out.push([s, cap || '']); } };
-  (p.compare ? [p.compare[0][0]] : []).forEach(s => add(s, p.compare[0][1]));
-  p.finals.forEach(s => add(s));
-  (p.compare || []).forEach(([s, c]) => add(s, c));
-  (p.process || []).forEach(([s, c]) => add(s, c));
-  return out;
-};
+const allShots = p => [...p.finals, ...(p.process || [])].map(asShot);
 
-const card = (p, i = 0) => { const c = p.cover.replace(/^img\/|\.jpg$/g, ''); return `<a class="card${p.big ? ' big' : ''}" style="--i:${Math.min(i, 8)}" href="#/${p.slug}">
-    <div class="img"><img src="img/${c}-sm.jpg" srcset="${srcset(c, 1024, 2560)}" sizes="${p.big ? '(max-width:1440px) 100vw, 1344px' : '(max-width:760px) 100vw, (max-width:1440px) 50vw, 672px'}" alt="${esc(p.title)}" loading="lazy" decoding="async" onload="this.classList.add('ld')"></div>
-    <div class="cap"><h3>${esc(p.title)}</h3><span class="meta">${p.year}</span></div></a>`; };
+const card = (p, i) => `<a class="card${p.big ? ' big' : ''}" style="--i:${i}" href="#/${p.slug}">
+    <div class="img">${pic(p.cover, { alt: p.title, half: !p.big, cover: true })}</div>
+    <div class="cap"><h3>${esc(p.title)}</h3><span class="meta">${p.year}</span></div></a>`;
+const gallery = page => PROJECTS.filter(p => pageOf(p) === page).map((p, i) => card(p, i)).join('');
 
-function viewHome(){
-  return `<div class="view wrap">
+const viewHome = () => `<div class="view wrap">
     <section class="hero" id="top">
-      <h1>Sebastián<br>Álvarez Delfín</h1>
-      <div class="role">Ilustrador y Concept Artist · Ciudad de México</div>
+      <h1>${SITE.replace(' ', '<br>')}</h1>
+      <div class="role">${ROLE_LINE}</div>
     </section>
-    <div class="bento gallery">${ORDER.filter(p => pageOf(p) === 'projects').map(card).join('')}</div>
+    <div class="bento gallery">${gallery('projects')}</div>
   </div>`;
-}
 
-function viewCharacters(){
-  const list = PROJECTS.filter(p => p.section === 'characters');
-  return `<div class="view wrap">
+const viewCharacters = () => `<div class="view wrap">
     <section class="page-h"><h1>Characters</h1><p>Diseño de personajes, lineups y desarrollo de IP original.</p></section>
-    <div class="bento">${list.map(card).join('')}</div>
+    <div class="bento">${gallery('characters')}</div>
   </div>`;
-}
 
-const fig = (s, i, cap, title, half) => `<figure class="shot" data-i="${i}"><div class="fr"><img src="img/${s}-sm.jpg" srcset="${srcset(s, 1600, 3840)}" sizes="${half ? '(max-width:760px) 100vw, (max-width:1440px) 50vw, 672px' : '(max-width:1440px) 100vw, 1344px'}" alt="${esc(title)}${cap ? ' — ' + esc(cap) : ''}" loading="${i ? 'lazy' : 'eager'}" decoding="async" onload="this.classList.add('ld')"></div>${cap ? `<figcaption>${esc(cap)}</figcaption>` : ''}</figure>`;
+const fig = ([name, cap], i, title, half) => `<figure class="shot"><button class="fr" data-i="${i}" aria-label="Ver en grande: ${esc(title)}${cap ? ' — ' + esc(cap) : ''}">${pic(name, { alt: title + (cap ? ' — ' + cap : ''), half, eager: i === 0 })}</button>${cap ? `<figcaption>${esc(cap)}</figcaption>` : ''}</figure>`;
 
 function viewProject(p){
-  const group = ORDER.filter(x => pageOf(x) === pageOf(p));
-  const i = group.indexOf(p), prev = group[(i - 1 + group.length) % group.length], next = group[(i + 1) % group.length];
-  const shots = allShots(p), idx = s => shots.findIndex(x => x[0] === s);
-  const sec = SECTIONS.find(s => s.id === p.section);
-  const finals = p.compare
-    ? `<div class="pair">${p.compare.map(([s, c]) => fig(s, idx(s), c, p.title, true)).join('')}</div>`
-    : `<div class="finals">${p.finals.map(s => fig(s, idx(s), '', p.title)).join('')}</div>`;
+  const group = PROJECTS.filter(x => pageOf(x) === pageOf(p));
+  const at = group.indexOf(p), prev = group[(at - 1 + group.length) % group.length], next = group[(at + 1) % group.length];
+  const page = PAGES[pageOf(p)];
+  const finals = p.finals.map(asShot), process = (p.process || []).map(asShot);
+  let n = 0; // running index into allShots(p), so a click opens the lightbox on the right picture
   return `<article class="view wrap">
-    <div class="p-top"><div><h1>${esc(p.title)}</h1><div class="sub">${p.year}</div></div><a class="back" href="#/${sec.page === 'characters' ? 'characters' : ''}">← ${sec.page === 'characters' ? 'Characters' : 'Projects'}</a></div>
-    ${finals}
-    <div class="p-info"><div>${p.desc.map(s => `<p>${esc(s)}</p>`).join('')}</div>
-      <dl>${[['Disciplina', p.tag], ...p.meta].map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl></div>
-    ${p.process ? `<div class="label">Proceso</div><div class="pair">${p.process.map(([s, c]) => fig(s, idx(s), c, p.title, true)).join('')}</div>` : ''}
+    <div class="p-top"><div><h1>${esc(p.title)}</h1><div class="sub">${p.year}</div></div><a class="back" href="#/${page.hash}">← ${page.label}</a></div>
+    <div class="${p.pair ? 'pair' : 'finals'}">${finals.map(s => fig(s, n++, p.title, p.pair)).join('')}</div>
+    <div class="p-info"><div>${(p.desc || []).map(s => `<p>${esc(s)}</p>`).join('')}</div>
+      <dl>${[['Disciplina', p.tag], ...(p.meta || [])].map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl></div>
+    ${process.length ? `<div class="label">Proceso</div><div class="pair">${process.map(s => fig(s, n++, p.title, true)).join('')}</div>` : ''}
     ${group.length < 2 ? '' : `<div class="pager"><a href="#/${prev.slug}"><small>← Anterior</small><span>${esc(prev.title)}</span></a><a href="#/${next.slug}"><small>Siguiente →</small><span>${esc(next.title)}</span></a></div>`}
   </article>`;
 }
 
 const viewAbout = () => `<section class="view wrap"><div class="about">
-    <div class="a-head"><h1>Sebastián<br>Álvarez Delfín</h1><div class="role">Ilustrador y Concept Artist · Ciudad de México</div></div>
-    <img class="portrait" src="img/sebastian.jpg" alt="Sebastián Álvarez Delfín" width="720" height="1078">
+    <div class="a-head"><h1>${SITE.replace(' ', '<br>')}</h1><div class="role">${ROLE_LINE}</div></div>
+    <img class="portrait" src="img/sebastian.jpg" alt="${SITE}" width="720" height="1078">
     <div class="a-bio">
-      <p>Ilustrador y Concept Artist especializado en environment design, keyframes y diseño de personajes para animación y videojuegos.</p>
+      <p>${ROLE} especializado en environment design, keyframes y diseño de personajes para animación y videojuegos.</p>
       <p>Trabajo con blockouts 3D en Blender y pintura digital en Photoshop para llegar a imágenes listas para producción, al servicio de la narrativa.</p>
     </div>
     <dl class="skills">
@@ -330,82 +348,121 @@ const viewAbout = () => `<section class="view wrap"><div class="about">
       <dt>3D</dt><dd>Blockouts, escultura digital, iluminación</dd>
       <dt>Herramientas</dt><dd>Photoshop, Blender, ZBrush, Procreate</dd>
     </dl>
-    <dl class="contact">
-      <dt>Email</dt><dd><a href="mailto:salvarezdelfin@gmail.com">salvarezdelfin@gmail.com</a></dd>
-      <dt>WhatsApp</dt><dd><a href="https://wa.me/525579806805" target="_blank" rel="noopener">+52 55 7980 6805</a></dd>
-      <dt>ArtStation</dt><dd><a href="https://www.artstation.com/ssebasalvarez" target="_blank" rel="noopener">ssebasalvarez</a></dd>
-      <dt>Instagram</dt><dd><a href="https://www.instagram.com/ssebartt" target="_blank" rel="noopener">@ssebartt</a></dd>
-      <dt>LinkedIn</dt><dd><a href="https://www.linkedin.com/in/juan-sebastián-álvarez-delfín-8326b8209" target="_blank" rel="noopener">Juan Sebastián Álvarez Delfín</a></dd>
+    <dl class="contact">${LINKS.map(l => `\n      <dt>${l.label}</dt><dd>${link(l, l.text)}</dd>`).join('')}
     </dl>
   </div></section>`;
 
-// lightbox
+// ── lightbox ──
 const lb = document.getElementById('lb'), lbImg = document.getElementById('lbImg'), lbC = document.getElementById('lbC');
-let current = null, shots = [], li = 0;
-function show(n){
+const lbX = document.getElementById('lbX'), lbP = document.getElementById('lbP'), lbN = document.getElementById('lbN');
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+let current = null, shots = [], li = 0, opener = null, loadSeq = 0;
+const lbSrcset = name => srcset(name, 1600, 3840);
+
+// Show picture n. The new picture stays hidden until it has decoded, so the previous one never flashes.
+// dir (only from a swipe) slides it in from the side the finger went.
+function showShot(n, dir = 0){
   li = (n + shots.length) % shots.length;
-  const [s, cap] = shots[li];
-  lbImg.src = src(s); lbImg.alt = `${current.title}${cap ? ' — ' + cap : ''}`;
+  const [name, cap] = shots[li], seq = ++loadSeq;
+  lbImg.classList.add('loading');
+  lbImg.sizes = '100vw'; lbImg.srcset = lbSrcset(name); lbImg.src = `img/${name}.jpg`;
+  lbImg.alt = `${current.title}${cap ? ' — ' + cap : ''}`;
   lbC.textContent = `${li + 1} / ${shots.length}${cap ? ' · ' + cap : ''}`;
-  document.getElementById('lbP').style.display = document.getElementById('lbN').style.display = shots.length > 1 ? '' : 'none';
+  lbP.hidden = lbN.hidden = shots.length < 2;
+  lbImg.decode().catch(() => {}).then(() => {
+    if (seq !== loadSeq) return;           // the user already moved on to another picture
+    lbImg.classList.remove('loading');
+    if (dir && !reduceMotion.matches) lbImg.animate([{ transform: `translateX(${dir * 32}px)`, opacity: 0.5 }, { transform: 'none', opacity: 1 }], { duration: 240, easing: 'cubic-bezier(.23,1,.32,1)' });
+    // warm up the neighbours so the next change is instant
+    for (const d of [1, -1]) { const im = new Image(); im.sizes = '100vw'; im.srcset = lbSrcset(shots[(li + d + shots.length) % shots.length][0]); }
+  });
 }
-function close(){ lb.classList.remove('open'); document.body.style.overflow = ''; }
-app.addEventListener('click', e => { const f = e.target.closest('.shot'); if (!f || !current) return; show(+f.dataset.i); lb.classList.add('open'); document.body.style.overflow = 'hidden'; });
-document.getElementById('lbX').onclick = close;
-document.getElementById('lbP').onclick = e => { e.stopPropagation(); show(li - 1); };
-document.getElementById('lbN').onclick = e => { e.stopPropagation(); show(li + 1); };
-lb.addEventListener('click', e => { if (e.target === lb) close(); });
+function openLb(n, from){
+  opener = from;
+  showShot(n);
+  lb.classList.add('open'); document.body.style.overflow = 'hidden';
+  lbX.focus({ preventScroll: true });
+}
+function closeLb(restoreFocus = true){
+  if (!lb.classList.contains('open')) return;
+  lb.classList.remove('open'); document.body.style.overflow = '';
+  if (restoreFocus && opener && opener.isConnected) opener.focus({ preventScroll: true });
+  opener = null;
+}
+app.addEventListener('click', e => { const b = e.target.closest('.shot .fr'); if (b && current) openLb(+b.dataset.i, b); });
+lbX.onclick = () => closeLb();
+lbP.onclick = e => { e.stopPropagation(); showShot(li - 1); };
+lbN.onclick = e => { e.stopPropagation(); showShot(li + 1); };
+lb.addEventListener('click', e => { if (e.target === lb) closeLb(); });
 addEventListener('keydown', e => {
   if (!lb.classList.contains('open')) return;
-  if (e.key === 'Escape') close(); else if (e.key === 'ArrowLeft') show(li - 1); else if (e.key === 'ArrowRight') show(li + 1);
-});
-let tx = null;
-lb.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
-// a quick flick counts as much as a long drag; the new image slides in from the side you swiped toward
-const calm = matchMedia('(prefers-reduced-motion: reduce)');
-let t0 = 0;
-lb.addEventListener('touchstart', () => { t0 = performance.now(); }, { passive: true });
-lb.addEventListener('touchend', e => {
-  if (tx === null || e.touches.length) return;
-  const dx = e.changedTouches[0].clientX - tx, v = Math.abs(dx) / Math.max(1, performance.now() - t0);
-  tx = null;
-  if (Math.abs(dx) < 50 && !(Math.abs(dx) > 16 && v > 0.11)) return;
-  show(li + (dx < 0 ? 1 : -1));
-  if (!calm.matches) lbImg.animate([{ transform: `translateX(${dx < 0 ? 32 : -32}px)`, opacity: 0.5 }, { transform: 'none', opacity: 1 }], { duration: 240, easing: 'cubic-bezier(.23,1,.32,1)' });
+  if (e.key === 'Escape') closeLb();
+  else if (e.key === 'ArrowLeft') showShot(li - 1);
+  else if (e.key === 'ArrowRight') showShot(li + 1);
+  else if (e.key === 'Tab') {               // keep focus inside the dialog
+    const f = [lbX, lbP, lbN].filter(b => !b.hidden), at = f.indexOf(document.activeElement);
+    e.preventDefault();
+    f[(at + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus();
+  }
 });
 
-// router. Old links (#/environment, #/keyframes, #/personajes, #/sobre-mi) keep working.
-const ALIAS = { personajes:'characters', 'sobre-mi':'about', environment:'', keyframes:'' };
-let homeRendered = false;
+// Swipe: a long horizontal drag, or a quick flick, changes the picture. Mostly-vertical moves and
+// pinches (2+ fingers) are ignored so they never change the picture by accident.
+const SWIPE_MIN_PX = 50, FLICK_MIN_PX = 24, FLICK_PX_PER_MS = 0.3;
+let touch = null;
+lb.addEventListener('touchstart', e => {
+  touch = e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: performance.now() } : null;
+}, { passive: true });
+lb.addEventListener('touchcancel', () => { touch = null; }, { passive: true });
+lb.addEventListener('touchend', e => {
+  if (!touch || e.touches.length) { touch = null; return; }
+  const end = e.changedTouches[0], dx = end.clientX - touch.x, dy = end.clientY - touch.y;
+  const flick = Math.abs(dx) > FLICK_MIN_PX && Math.abs(dx) / Math.max(1, performance.now() - touch.t) > FLICK_PX_PER_MS;
+  touch = null;
+  if (Math.abs(dx) < Math.abs(dy) * 1.5) return;
+  if (Math.abs(dx) < SWIPE_MIN_PX && !flick) return;
+  showShot(li + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1);
+});
+// iOS Safari only shows :active press states when a touch listener exists
+document.addEventListener('touchstart', () => {}, { passive: true });
+
+// ── router ── old links (#/environment, #/keyframes, #/personajes, #/sobre-mi) keep working
+const ALIAS = { personajes: 'characters', 'sobre-mi': 'about', environment: '', keyframes: '' };
+let homeRendered = false; // home is kept once rendered, so its card animation doesn't replay on old links that land there
 function route(){
   let h = location.hash.replace(/^#\/?/, '');
-  if (h in ALIAS) h = ALIAS[h];
+  if (Object.hasOwn(ALIAS, h)) h = ALIAS[h];
   const p = PROJECTS.find(x => x.slug === h);
-  let nav = '', title = `${SITE} — Ilustrador y Concept Artist`;
-  current = null; close();
-  document.body.classList.remove('home');
-  if (p){ app.innerHTML = viewProject(p); current = p; shots = allShots(p); nav = p.section; title = `${p.title} — ${SITE}`; homeRendered = false; scrollTo(0, 0); }
-  else if (h === 'characters'){ app.innerHTML = viewCharacters(); nav = 'characters'; title = `Characters — ${SITE}`; homeRendered = false; scrollTo(0, 0); }
-  else if (h === 'about'){ app.innerHTML = viewAbout(); nav = 'about'; title = `About me — ${SITE}`; homeRendered = false; scrollTo(0, 0); }
-  else {
-    document.body.classList.add('home');
-    if (!homeRendered){ app.innerHTML = viewHome(); homeRendered = true; }
-    scrollTo(0, 0);
-  }
-  document.title = title;
-  const tab = nav === 'about' ? 'about' : (SECTIONS.find(s => s.id === nav) || {}).page || 'projects';
-  document.querySelectorAll('[data-nav]').forEach(a => a.classList.toggle('on', a.dataset.nav === tab));
+  const v = p ? { html: viewProject(p), tab: pageOf(p), title: `${p.title} — ${SITE}` }
+    : h === 'characters' ? { html: viewCharacters(), tab: 'characters', title: `Characters — ${SITE}` }
+    : h === 'about' ? { html: viewAbout(), tab: 'about', title: `About me — ${SITE}` }
+    : { html: null, tab: 'projects', title: `${SITE} — ${ROLE}` };
+  closeLb(false);
+  current = p || null; shots = p ? allShots(p) : [];
+  document.body.classList.toggle('home', !v.html);
+  if (v.html){ app.innerHTML = v.html; homeRendered = false; }
+  else if (!homeRendered){ app.innerHTML = viewHome(); homeRendered = true; }
+  scrollTo(0, 0);
+  document.title = v.title;
+  document.querySelectorAll('[data-nav]').forEach(a => a.classList.toggle('on', a.dataset.nav === v.tab));
   onScroll();
 }
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 const hdr = document.getElementById('hdr');
-function onScroll(){ hdr.classList.toggle('scrolled', scrollY > (document.body.classList.contains('home') ? ((document.getElementById('top') || {}).offsetHeight || 8) - 40 : 8)); }
+// on home the header gets its border (and the small name) once the big name has scrolled away
+function onScroll(){
+  const hero = document.body.classList.contains('home') && document.getElementById('top');
+  hdr.classList.toggle('scrolled', scrollY > (hero ? hero.offsetHeight - 40 : 8));
+}
 addEventListener('scroll', onScroll, { passive: true });
 addEventListener('hashchange', route);
 // "Projects" while already on the home page: just go back to the top
 document.querySelector('[data-nav=projects]').addEventListener('click', e => { if (/^#\/?$/.test(location.hash) || !location.hash){ e.preventDefault(); scrollTo({ top: 0, behavior: 'smooth' }); } });
-route();
+
+document.querySelector('.brand span').textContent = ROLE_LINE;
+document.querySelector('footer .soc').innerHTML = LINKS.filter(l => l.foot).map(l => link(l, l.foot)).join('\n      ');
 document.getElementById('yr').textContent = new Date().getFullYear();
+route();
 </script>
 </body>
 </html>
